@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROJECT_ROBO // MINIMAL DASHBOARD</title>
+  <!-- Google Fonts: Inter and JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <!-- App Shell -->
+  <div class="app-container">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-accent">//</span>
+          <span class="logo-text">ROBO_SYSTEMS</span>
+        </div>
+        <div class="version">V1.0.4</div>
+      </div>
+
+      <nav class="project-nav">
+        <div class="nav-title">ACTIVE PROJECTS</div>
+        <ul id="project-list">
+          <!-- Dynamically populated -->
+        </ul>
+      </nav>
+
+      <div class="sidebar-section">
+        <div class="nav-title">LAB STATUS</div>
+        <div class="status-indicator">
+          <span class="status-dot pulsing"></span>
+          <span class="status-label" id="system-status">SYSTEMS ACTIVE // ONLINE</span>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-role-card">
+          <div class="role-header">
+            <span class="role-icon" id="role-badge-icon">🔒</span>
+            <div class="role-details">
+              <div class="role-title">CURRENT ROLE</div>
+              <div class="role-value" id="current-role-display">ADMINISTRATOR</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-full" id="btn-toggle-login">PARTNER LOGIN / LOCK</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Bar Header -->
+      <header class="top-bar">
+        <div class="project-meta">
+          <span class="text-mute">PROJECT /</span>
+          <h1 id="active-project-name">COMMUNICATION ROBOT</h1>
+        </div>
+        
+        <div class="top-bar-actions">
+          <div class="theme-toggle-wrapper">
+            <button class="theme-toggle-btn" id="theme-toggle" title="Toggle Theme (Stark Light / Deep Dark)">
+              <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+          </div>
+          <div class="partner-badge" id="partner-badge">ADMIN CONTROL</div>
+        </div>
+      </header>
+
+      <!-- Dashboard Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Column: 3D model and Workflow -->
+        <div class="grid-col col-left">
+          
+          <!-- Interactive 3D Model Wireframe Viewer -->
+          <section class="card viewer-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">3D_MODEL</span>
+                <h2>INTERACTIVE MODEL VIEWER</h2>
+              </div>
+              <div class="viewer-actions">
+                <button class="btn btn-icon" id="btn-reset-view" title="Reset View">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+                <div class="model-coordinate" id="model-coords">ROT: X:0.00 Y:0.00</div>
+              </div>
+            </div>
+            <div class="card-body viewer-container">
+              <div class="viewer-canvas-wrapper" id="canvas-container">
+                <!-- 3D Canvas will be appended here -->
+              </div>
+              <div class="viewer-overlay">
+                <span class="text-monospace text-xs">LMB: Rotate | RMB: Pan | Scroll: Zoom</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Progression / Workflow Progress Bar -->
+          <section class="card workflow-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">PROGRESSION</span>
+                <h2>WORKFLOW MILESTONES</h2>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="btn btn-secondary btn-xs admin-only" id="btn-reset-workflow" style="margin-right: 8px;">RESET FLOW</button>
+                <div id="overall-progress-text" class="text-monospace text-sm">40% COMPLETE</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Visual Multi-stage Progress Bar -->
+              <div class="progression-bar-container" id="workflow-bar">
+                <!-- Stages will be populated here -->
+              </div>
+              <div class="workflow-info text-xs text-mute mt-3">
+                * Click milestones to update state (Admin only). Milestones impact overall progress metrics.
+              </div>
+            </div>
+          </section>
+
+          <!-- checklist Widget -->
+          <section class="card checklist-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">TASKS</span>
+                <h2>PROJECT CHECKLIST</h2>
+              </div>
+              <span class="badge" id="checklist-ratio">3/5</span>
+            </div>
+            <div class="card-body">
+              <ul class="checklist-items" id="checklist-container">
+                <!-- Populated dynamically -->
+              </ul>
+              
+              <!-- Add new item form -->
+              <form id="form-add-task" class="add-item-form mt-4">
+                <input type="text" id="input-task-text" placeholder="Add custom task item..." class="input-text" autocomplete="off" required>
+                <button type="submit" class="btn btn-primary">ADD TASK</button>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Column: Files, Parts, Changelog -->
+        <div class="grid-col col-right">
+          
+          <!-- Files & Documents Hub -->
+          <section class="card files-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">DOCUMENTS</span>
+                <h2>FILES &amp; MEDIA HUB</h2>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="files-grid" id="files-container">
+                <!-- Populated dynamically -->
+              </div>
+
+              <!-- Upload form -->
+              <div class="upload-wrapper mt-4">
+                <h3 class="section-sub-title">ADD FILE OR PDF</h3>
+                <form id="form-upload-file" class="upload-form">
+                  <div class="form-row">
+                    <div class="form-group flex-2">
+                      <label for="input-file-name" class="label-text">File Title</label>
+                      <input type="text" id="input-file-name" placeholder="e.g. Robot Arms schematics" class="input-text" required>
+                    </div>
+                    <div class="form-group flex-1">
+                      <label for="input-file-type" class="label-text">Category</label>
+                      <select id="input-file-type" class="input-select">
+                        <option value="pdf">PDF Document</option>
+                        <option value="image">Reference Image</option>
+                        <option value="model">3D Model Link</option>
+                        <option value="other">Other Spec</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-row mt-2">
+                    <div class="form-group flex-3">
+                      <label for="input-file-source" class="label-text">Choose File or Enter URL</label>
+                      <div class="file-input-wrapper">
+                        <input type="file" id="input-file-upload" class="input-file-hidden" accept=".pdf,image/*">
+                        <button type="button" class="btn btn-secondary btn-file-dummy" id="btn-file-select">BROWSE LOCAL FILE</button>
+                        <span id="selected-file-label" class="file-label text-xs text-mute">No file chosen</span>
+                      </div>
+                      <div class="text-center text-xs text-mute my-1">OR</div>
+                      <input type="url" id="input-file-url" placeholder="https://external-resource-link.com/file" class="input-text">
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-full mt-3">UPLOAD &amp; ATTACH TO PROJECT</button>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <!-- Parts List Manager -->
+          <section class="card parts-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">BOM</span>
+                <h2>PARTS &amp; COMPONENT LIST</h2>
+              </div>
+              <span class="text-monospace text-sm" id="parts-cost-total">TOTAL: $0.00</span>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="parts-table">
+                  <thead>
+                    <tr>
+                      <th>PART NAME</th>
+                      <th>QTY</th>
+                      <th>COST (EA)</th>
+                      <th>STATUS</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="parts-container">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Add Part Form -->
+              <form id="form-add-part" class="add-part-form mt-4">
+                <h3 class="section-sub-title">REGISTER NEW COMPONENT</h3>
+                <div class="form-row">
+                  <div class="form-group flex-2">
+                    <input type="text" id="input-part-name" placeholder="Component name (e.g. Nema 17)" class="input-text" required>
+                  </div>
+                  <div class="form-group flex-1">
+                    <input type="number" id="input-part-qty" placeholder="Qty" min="1" value="1" class="input-text" required>
+                  </div>
+                  <div class="form-group flex-1">
+                    <input type="number" id="input-part-cost" placeholder="$ Cost" min="0" step="0.01" value="0.00" class="input-text" required>
+                  </div>
+                  <div class="form-group flex-1.5">
+                    <select id="input-part-status" class="input-select">
+                      <option value="Pending">Pending</option>
+                      <option value="Ordered">Ordered</option>
+                      <option value="Arrived">Arrived</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary">ADD</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- Change History Log (Changelog) -->
+          <section class="card changelog-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="tag">HISTORY</span>
+                <h2>WORK CHANGES LOG</h2>
+              </div>
+              <button class="btn btn-secondary btn-xs" id="btn-clear-changelog">CLEAR LOG</button>
+            </div>
+              </div>
+              
+              <!-- Partner Note Form (Only visible to Partners) -->
+              <form id="form-partner-note" class="partner-only mt-4">
+                <h3 class="section-sub-title">SUBMIT PARTNER REVIEW NOTE</h3>
+                <div class="form-row">
+                  <input type="text" id="input-partner-note" placeholder="Write feedback or review comments..." class="input-text" autocomplete="off" required>
+                  <button type="submit" class="btn btn-primary">SUBMIT NOTE</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Login/Role Modal -->
+  <div class="modal-backdrop" id="login-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>SECURE GATEWAY // AUTHENTICATION</h2>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-mute mb-4">
+          Please input user credentials to verify security access levels.
+        </p>
+        
+        <form id="form-login-auth" onsubmit="event.preventDefault();">
+          <div class="form-group">
+            <label for="login-username" class="label-text">Username / Identifier</label>
+            <input type="text" id="login-username" placeholder="e.g. admin1234" class="input-text" autocomplete="username" required>
+          </div>
+
+          <div class="form-group mt-2">
+            <label for="login-password" class="label-text">Security Code / Password</label>
+            <input type="password" id="login-password" placeholder="••••••••" class="input-text" autocomplete="current-password" required>
+          </div>
+
+          <div id="login-error-msg" class="text-xs mt-2 text-monospace" style="color: var(--danger-color); display: none; font-weight: bold;">
+            * ACCESS DENIED: INVALID CREDENTIALS
+          </div>
+
+          <div class="credentials-info mt-4" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+            <div style="font-weight: bold; margin-bottom: 6px; color: var(--text-secondary);">AVAILABLE LAB CREDENTIALS:</div>
+            <div>• OWNER: <span style="color: var(--text-primary);">admin1234</span> / <span style="color: var(--text-primary);">12345678</span></div>
+            <div style="margin-top: 4px;">• PARTNER: <span style="color: var(--text-primary);">partner1234</span> / <span style="color: var(--text-primary);">12345678</span></div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-login">CANCEL</button>
+            <button type="submit" class="btn btn-primary" id="btn-confirm-login">AUTHENTICATE</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image/PDF Preview Modal -->
+  <div class="modal-backdrop" id="preview-modal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2 id="preview-title">Document Preview</h2>
+        <button class="modal-close" id="btn-close-preview">&times;</button>
+      </div>
+      <div class="modal-body text-center" id="preview-body">
+        <!-- Loaded dynamic preview -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Main script loader -->
+  <script src="app.js" type="module"></script>
+
+</body>
+</html>
