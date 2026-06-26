@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * ROBO_SYSTEMS CORE APPLICATION & STATE MANAGEMENT (OPTIMIZED & BUG-FIXED)
+ * ROBO_SYSTEMS CORE APPLICATION & STATE MANAGEMENT
  * ==========================================================================
  */
 
@@ -12,7 +12,7 @@ const SEED_PROJECTS = [
     id: "communication-robot",
     name: "COMMUNICATION ROBOT",
     description: "Sleek hovering assistant robot with built-in voice processing and visual display. Designed for question-answering and communication in lab environments.",
-    currentMilestoneIdx: 1, 
+    currentMilestoneIdx: 1, // "3D Printing"
     milestones: ["Concept", "3D Printing", "Electronics Setup", "Language Model", "Field Testing"],
     checklist: [],
     files: [
@@ -53,7 +53,7 @@ const SEED_PROJECTS = [
     id: "robotic-arm",
     name: "ROBOTIC ARM",
     description: "5-Axis articulated arm for laboratory micro-positioning, sorting, and precision assembly. Utilizing heavy-duty stepper motor drivers.",
-    currentMilestoneIdx: 1, 
+    currentMilestoneIdx: 1, // "3D Printing"
     milestones: ["CAD Design", "3D Printing", "Actuators Wiring", "Inverse Kinematics", "End-effector Test"],
     checklist: [],
     files: [
@@ -93,7 +93,7 @@ const SEED_PROJECTS = [
     id: "plastic-remover",
     name: "PLASTIC REMOVING MACHINE",
     description: "All-terrain autonomous mobile robot equipped with a rotary sweeper drum and AI camera to collect plastic trash from field grounds.",
-    currentMilestoneIdx: 0, 
+    currentMilestoneIdx: 0, // "Locomotion"
     milestones: ["Locomotion Setup", "Sweeper Mechanism", "Vision Model Training", "Integration Build", "Field Testing"],
     checklist: [],
     files: [
@@ -131,14 +131,16 @@ const SEED_PROJECTS = [
   }
 ];
 
+// App State Core
 class RoboApp {
   constructor() {
     this.projects = [];
     this.activeProjectId = "";
-    this.currentRole = "ADMINISTRATOR"; 
+    this.currentRole = "ADMINISTRATOR"; // ADMINISTRATOR or PARTNER
     this.theme = "dark";
     this.viewer = null;
     
+    // File upload cache
     this.uploadedFileDataUrl = "";
     this.uploadedFileName = "";
 
@@ -146,22 +148,23 @@ class RoboApp {
   }
 
   init() {
+    // 1. Load data from LocalStorage or initialize with SEED
     this.loadState();
 
-    // Shield setup against basic setup errors in HTML
-    try {
-      this.viewer = new RoboViewer('canvas-container', 'model-coords');
-    } catch(e) {
-      console.warn("3D Engine canvas framework offline or unallocated. Continuing UI engine execution.");
-    }
+    // 2. Initialize 3D Viewer
+    this.viewer = new RoboViewer('canvas-container', 'model-coords');
 
+    // 3. Render initial views
     this.renderProjectList();
     this.switchProject(this.activeProjectId);
     this.applyTheme();
     this.applyRoleUI();
+
+    // 4. Bind listeners
     this.bindEvents();
   }
 
+  // Load from localStorage
   loadState() {
     const savedProjects = localStorage.getItem('robo_projects');
     const hasBootedV3 = localStorage.getItem('robo_boot_v3') === 'true';
@@ -170,9 +173,11 @@ class RoboApp {
       try {
         this.projects = JSON.parse(savedProjects);
       } catch (e) {
+        console.error("Failed to parse saved projects, resetting seed.", e);
         this.projects = SEED_PROJECTS;
       }
     } else {
+      // Clean start for clean checklists and new credentials
       this.projects = SEED_PROJECTS;
       localStorage.setItem('robo_boot_v3', 'true');
       this.saveState();
@@ -182,13 +187,21 @@ class RoboApp {
     if (savedActiveId && this.projects.some(p => p.id === savedActiveId)) {
       this.activeProjectId = savedActiveId;
     } else {
-      this.activeProjectId = this.projects[0]?.id || "";
+      this.activeProjectId = this.projects[0].id;
     }
 
-    this.currentRole = localStorage.getItem('robo_role') || "ADMINISTRATOR";
-    this.theme = localStorage.getItem('robo_theme') || "dark";
+    const savedRole = localStorage.getItem('robo_role');
+    if (savedRole) {
+      this.currentRole = savedRole;
+    }
+
+    const savedTheme = localStorage.getItem('robo_theme');
+    if (savedTheme) {
+      this.theme = savedTheme;
+    }
   }
 
+  // Save to localStorage
   saveState() {
     localStorage.setItem('robo_projects', JSON.stringify(this.projects));
     localStorage.setItem('robo_active_project_id', this.activeProjectId);
@@ -200,6 +213,7 @@ class RoboApp {
     return this.projects.find(p => p.id === this.activeProjectId);
   }
 
+  // Add event to changelog
   logChange(projectId, actionText) {
     const project = this.projects.find(p => p.id === projectId);
     if (!project) return;
@@ -218,9 +232,9 @@ class RoboApp {
     this.renderChangelog();
   }
 
+  // Render project lists in sidebar
   renderProjectList() {
     const listContainer = document.getElementById('project-list');
-    if (!listContainer) return;
     listContainer.innerHTML = '';
 
     this.projects.forEach(project => {
@@ -247,11 +261,12 @@ class RoboApp {
     });
   }
 
+  // Switch project
   switchProject(projectId) {
-    if (!projectId) return;
     this.activeProjectId = projectId;
     localStorage.setItem('robo_active_project_id', projectId);
 
+    // Update active highlight in sidebar
     const listItems = document.querySelectorAll('#project-list li');
     this.projects.forEach((proj, idx) => {
       if (proj.id === projectId) {
@@ -264,71 +279,89 @@ class RoboApp {
     const project = this.getActiveProject();
     if (!project) return;
 
-    const nameEl = document.getElementById('active-project-name');
-    if (nameEl) nameEl.innerText = project.name;
+    // Update UI headers
+    document.getElementById('active-project-name').innerText = project.name;
 
+    // Render widgets
     this.renderMilestones();
     this.renderChecklist();
     this.renderFiles();
     this.renderParts();
     this.renderChangelog();
 
-    if (this.viewer && typeof this.viewer.loadModel === 'function') {
+    // Trigger 3D viewer model swap
+    if (this.viewer) {
       this.viewer.loadModel(project.name);
     }
   }
 
+  // Calculate project completion percent
   calculateProgress(project) {
     if (!project) return 0;
+    
+    // Milestones completion weight (50%)
     const milestonesCount = project.milestones.length;
     const milestoneProgress = milestonesCount > 1 
       ? (project.currentMilestoneIdx / (milestonesCount - 1)) * 50 
       : 0;
 
+    // Checklist completion weight (50%)
     const totalChecklist = project.checklist.length;
     const checkedChecklist = project.checklist.filter(c => c.checked).length;
     const checklistProgress = totalChecklist > 0 
       ? (checkedChecklist / totalChecklist) * 50 
       : 0;
 
-    return Math.min(100, Math.max(0, Math.round(milestoneProgress + checklistProgress)));
+    const total = Math.round(milestoneProgress + checklistProgress);
+    return Math.min(100, Math.max(0, total));
   }
 
+  // Render Milestones/Progress tracker
   renderMilestones() {
     const project = this.getActiveProject();
     const container = document.getElementById('workflow-bar');
     const textPercent = document.getElementById('overall-progress-text');
-    if (!container) return;
-
+    
     container.innerHTML = '';
-    const progressPercent = this.calculateProgress(project);
-    if (textPercent) textPercent.innerText = `${progressPercent}% COMPLETED`;
 
+    const progressPercent = this.calculateProgress(project);
+    textPercent.innerText = `${progressPercent}% COMPLETED`;
+
+    // Fill line
     const fill = document.createElement('div');
     fill.classList.add('progression-progress-fill');
     
+    // Calculate width relative to node count
     const nodeCount = project.milestones.length;
-    const percentFillWidth = nodeCount > 1 ? (project.currentMilestoneIdx / (nodeCount - 1)) * 100 : 0;
+    const percentFillWidth = nodeCount > 1 
+      ? (project.currentMilestoneIdx / (nodeCount - 1)) * 100 
+      : 0;
     fill.style.width = `${percentFillWidth}%`;
     container.appendChild(fill);
 
+    // Nodes
     project.milestones.forEach((milestone, idx) => {
       const node = document.createElement('div');
       node.classList.add('progression-node');
       
-      if (idx < project.currentMilestoneIdx) node.classList.add('completed');
-      else if (idx === project.currentMilestoneIdx) node.classList.add('active');
+      if (idx < project.currentMilestoneIdx) {
+        node.classList.add('completed');
+      } else if (idx === project.currentMilestoneIdx) {
+        node.classList.add('active');
+      }
 
       node.innerHTML = `
         <div class="node-dot"></div>
         <div class="node-label">${milestone}</div>
       `;
 
+      // Click event for milestones (restricted to Admin)
       node.addEventListener('click', () => {
         if (this.currentRole !== 'ADMINISTRATOR') {
-          this.alertRestricted("Milestone structural updates require Admin Control clearances.");
+          this.alertRestricted("Milestone selection is locked in Partner mode.");
           return;
         }
+        
         project.currentMilestoneIdx = idx;
         this.logChange(project.id, `Advanced project milestone stage to "${milestone}".`);
         this.saveState();
@@ -339,16 +372,17 @@ class RoboApp {
     });
   }
 
+  // Render Project Checklist
   renderChecklist() {
     const project = this.getActiveProject();
     const container = document.getElementById('checklist-container');
     const ratioBadge = document.getElementById('checklist-ratio');
-    if (!container) return;
 
     container.innerHTML = '';
+
     const total = project.checklist.length;
     const checked = project.checklist.filter(c => c.checked).length;
-    if (ratioBadge) ratioBadge.innerText = `${checked}/${total}`;
+    ratioBadge.innerText = `${checked}/${total}`;
 
     project.checklist.forEach(item => {
       const li = document.createElement('li');
@@ -358,13 +392,16 @@ class RoboApp {
         <label class="checkbox-container">
           <input type="checkbox" ${item.checked ? 'checked' : ''} ${this.currentRole === 'PARTNER' ? 'disabled' : ''}>
           <span class="checkbox-checkmark"></span>
-          <span class="task-text-span">${item.text}</span>
+          ${item.text}
         </label>
         ${this.currentRole === 'ADMINISTRATOR' ? `<button class="btn-delete-task" data-id="${item.id}">&times;</button>` : ''}
       `;
 
-      li.querySelector('input').addEventListener('change', (e) => {
+      // Listen to checkbox toggles
+      const input = li.querySelector('input');
+      input.addEventListener('change', (e) => {
         if (this.currentRole !== 'ADMINISTRATOR') return;
+        
         item.checked = e.target.checked;
         this.logChange(project.id, `${e.target.checked ? 'Completed' : 'Reopened'} checklist item: "${item.text}".`);
         this.saveState();
@@ -373,6 +410,7 @@ class RoboApp {
         this.renderProjectList();
       });
 
+      // Listen to delete clicks
       const deleteBtn = li.querySelector('.btn-delete-task');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', () => {
@@ -389,10 +427,10 @@ class RoboApp {
     });
   }
 
+  // Render Files Hub
   renderFiles() {
     const project = this.getActiveProject();
     const container = document.getElementById('files-container');
-    if (!container) return;
     container.innerHTML = '';
 
     if (project.files.length === 0) {
@@ -409,12 +447,13 @@ class RoboApp {
       if (file.category === 'image') icon = '🖼️';
       if (file.category === 'model') icon = '⚙️';
 
+      // Visual Thumbnail for images
       let thumbHtml = '';
       if (file.category === 'image') {
         const bgSource = file.dataUrl ? file.dataUrl : file.url;
         thumbHtml = `<div class="file-preview-thumb" style="background-image: url('${bgSource}')"></div>`;
       } else if (file.category === 'pdf') {
-        thumbHtml = `<div class="file-preview-thumb" style="display:flex; align-items:center; justify-content:center; background-color:#1e1e1e; color:#a3a3a3; font-size:10px; font-weight:bold;">PDF</div>`;
+        thumbHtml = `<div class="file-preview-thumb" style="display:flex; align-items:center; justify-content:center; background-color:#1e1e1e; color:#a3a3a3; font-size:10px; font-weight:bold; border-color:#2a2a2a;">PDF DOCUMENT</div>`;
       }
 
       card.innerHTML = `
@@ -430,14 +469,18 @@ class RoboApp {
           </div>
         </div>
         <div class="file-actions">
-          <button class="btn btn-secondary btn-xs btn-view-file">PREVIEW</button>
-          <button class="btn btn-secondary btn-xs btn-download-file">DOWNLOAD</button>
-          ${this.currentRole === 'ADMINISTRATOR' ? `<button class="btn btn-secondary btn-xs btn-delete-file">&times; DELETE</button>` : ''}
+          <button class="btn btn-secondary btn-xs btn-view-file" data-id="${file.id}">PREVIEW</button>
+          <button class="btn btn-secondary btn-xs btn-download-file" data-id="${file.id}">DOWNLOAD</button>
+          ${this.currentRole === 'ADMINISTRATOR' ? `<button class="btn btn-secondary btn-xs btn-delete-file" data-id="${file.id}">DELETE</button>` : ''}
         </div>
       `;
 
-      card.querySelector('.btn-view-file').addEventListener('click', () => this.openFilePreview(file));
+      // View File trigger
+      card.querySelector('.btn-view-file').addEventListener('click', () => {
+        this.openFilePreview(file);
+      });
 
+      // Download File trigger
       card.querySelector('.btn-download-file').addEventListener('click', () => {
         const link = document.createElement('a');
         link.href = file.dataUrl ? file.dataUrl : file.url;
@@ -447,6 +490,7 @@ class RoboApp {
         document.body.removeChild(link);
       });
 
+      // Delete File trigger
       const delBtn = card.querySelector('.btn-delete-file');
       if (delBtn) {
         delBtn.addEventListener('click', () => {
@@ -461,13 +505,13 @@ class RoboApp {
     });
   }
 
+  // Open Preview Modal
   openFilePreview(file) {
     const modal = document.getElementById('preview-modal');
     const title = document.getElementById('preview-title');
     const body = document.getElementById('preview-body');
-    if (!modal || !body) return;
 
-    if (title) title.innerText = file.name;
+    title.innerText = file.name;
     body.innerHTML = '';
 
     const source = file.dataUrl ? file.dataUrl : file.url;
@@ -476,45 +520,48 @@ class RoboApp {
       const img = document.createElement('img');
       img.src = source;
       img.className = 'preview-img';
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '70vh';
       body.appendChild(img);
     } else if (file.category === 'pdf') {
       if (file.dataUrl) {
+        // Embed Base64 PDF
         const embed = document.createElement('embed');
         embed.src = file.dataUrl;
         embed.type = 'application/pdf';
         embed.className = 'preview-iframe';
-        embed.style.width = '100%';
-        embed.style.height = '60vh';
         body.appendChild(embed);
       } else {
+        // Fallback for seed
         body.innerHTML = `
-          <div style="padding: 40px; text-align:center;">
+          <div style="padding: 40px; background-color: var(--bg-tertiary); border: 1px dashed var(--border-color);">
             <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
             <h3>Simulated Document: ${file.name}</h3>
-            <p class="text-sm text-mute mt-2">Local server mock layer active.</p>
+            <p class="text-sm text-mute mt-2">PDF reader core active. In production, this renders the uploaded binary file directly.</p>
+            <a href="#" class="btn btn-primary mt-3" onclick="event.preventDefault(); alert('Downloading file: ${file.name}');">DOWNLOAD SCHEMATICS</a>
           </div>
         `;
       }
     } else {
       body.innerHTML = `
-        <div style="padding: 40px; text-align:center;">
-          <div style="font-size: 48px; margin-bottom: 16px;">⚙️</div>
-          <h3>Binary Assets: ${file.name}</h3>
+        <div style="padding: 40px; background-color: var(--bg-tertiary); border: 1px dashed var(--border-color);">
+          <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+          <h3>Binary Document: ${file.name}</h3>
+          <p class="text-sm text-mute mt-2">File Format: ${file.category.toUpperCase()} | Size: ${file.size}</p>
+          <a href="#" class="btn btn-primary mt-3" onclick="event.preventDefault(); alert('Downloading binary assets...');">DOWNLOAD ATTACHMENTS</a>
         </div>
       `;
     }
+
     modal.classList.add('show');
   }
 
+  // Render Parts table
   renderParts() {
     const project = this.getActiveProject();
     const container = document.getElementById('parts-container');
     const costTotalDisplay = document.getElementById('parts-cost-total');
-    if (!container) return;
 
     container.innerHTML = '';
+
     let totalCost = 0;
 
     project.parts.forEach(part => {
@@ -527,24 +574,29 @@ class RoboApp {
         <td>${part.qty}</td>
         <td>$${part.cost.toFixed(2)}</td>
         <td>
-          <span class="part-status-badge status-${part.status.toLowerCase()}">${part.status}</span>
+          <span class="part-status-badge status-${part.status}" data-id="${part.id}">${part.status}</span>
         </td>
         <td>
-          ${this.currentRole === 'ADMINISTRATOR' ? `<button class="btn btn-secondary btn-xs btn-delete-part">REMOVE</button>` : '—'}
+          ${this.currentRole === 'ADMINISTRATOR' ? `<button class="btn btn-secondary btn-xs btn-delete-part" data-id="${part.id}">REMOVE</button>` : '—'}
         </td>
       `;
 
+      // Cycle Status Event (Admin Only)
       const badge = tr.querySelector('.part-status-badge');
       badge.addEventListener('click', () => {
         if (this.currentRole !== 'ADMINISTRATOR') return;
+        
         const states = ["Pending", "Ordered", "Arrived"];
         const currentIdx = states.indexOf(part.status);
-        part.status = states[(currentIdx + 1) % states.length];
-        this.logChange(project.id, `Updated part status: "${part.name}" -> ${part.status}.`);
+        const nextState = states[(currentIdx + 1) % states.length];
+        
+        part.status = nextState;
+        this.logChange(project.id, `Updated part status: "${part.name}" -> ${nextState}.`);
         this.saveState();
         this.renderParts();
       });
 
+      // Delete Part trigger
       const delBtn = tr.querySelector('.btn-delete-part');
       if (delBtn) {
         delBtn.addEventListener('click', () => {
@@ -558,13 +610,13 @@ class RoboApp {
       container.appendChild(tr);
     });
 
-    if (costTotalDisplay) costTotalDisplay.innerText = `TOTAL: $${totalCost.toFixed(2)}`;
+    costTotalDisplay.innerText = `TOTAL: $${totalCost.toFixed(2)}`;
   }
 
+  // Render Changelog
   renderChangelog() {
     const project = this.getActiveProject();
     const container = document.getElementById('changelog-container');
-    if (!container) return;
     container.innerHTML = '';
 
     if (project.changelog.length === 0) {
@@ -575,6 +627,7 @@ class RoboApp {
     project.changelog.forEach(log => {
       const li = document.createElement('li');
       li.className = 'timeline-item';
+
       li.innerHTML = `
         <div class="timeline-dot"></div>
         <div class="timeline-content">
@@ -584,368 +637,350 @@ class RoboApp {
           <div class="timeline-message">${log.action}</div>
         </div>
       `;
+
       container.appendChild(li);
     });
   }
 
+  // Apply visual theme selection
   applyTheme() {
     document.documentElement.setAttribute('data-theme', this.theme);
-    if (this.viewer && typeof this.viewer.updateMaterials === 'function') {
+    
+    // Notify 3D renderer of theme swap to update canvas scene backgrounds & grid
+    if (this.viewer) {
       this.viewer.updateMaterials(this.theme);
     }
   }
 
+  // Apply role styles and form locking
   applyRoleUI() {
     const badge = document.getElementById('partner-badge');
     const roleDisplay = document.getElementById('current-role-display');
     const badgeIcon = document.getElementById('role-badge-icon');
     const container = document.querySelector('.main-content');
-    const adminForms = document.querySelectorAll('.admin-only-form, #form-add-task, #form-add-part, #form-upload-file');
     
-    if (roleDisplay) roleDisplay.innerText = this.currentRole;
+    roleDisplay.innerText = this.currentRole;
     
     if (this.currentRole === 'PARTNER') {
-      if (badge) {
-        badge.innerText = 'PARTNER REVIEW // READ ONLY';
-        badge.classList.add('partner-mode');
-      }
-      if (badgeIcon) badgeIcon.innerText = '👁️';
-      if (container) container.classList.add('partner-locked');
+      badge.innerText = 'PARTNER REVIEW // READ ONLY';
+      badge.classList.add('partner-mode');
+      badgeIcon.innerText = '👁️';
+      container.classList.add('partner-locked');
       document.body.classList.add('partner-mode-active');
-      
-      // Hide or disable operational inputs for pure review profiles
-      adminForms.forEach(form => form.style.opacity = '0.5');
     } else {
-      if (badge) {
-        badge.innerText = 'ADMIN CONTROL';
-        badge.classList.remove('partner-mode');
-      }
-      if (badgeIcon) badgeIcon.innerText = '🔓';
-      if (container) container.classList.remove('partner-locked');
+      badge.innerText = 'ADMIN CONTROL';
+      badge.classList.remove('partner-mode');
+      badgeIcon.innerText = '🔓';
+      container.classList.remove('partner-locked');
       document.body.classList.remove('partner-mode-active');
-      
-      adminForms.forEach(form => form.style.opacity = '1');
     }
 
-    this.renderChecklist();
-    this.renderFiles();
-    this.renderParts();
+    // Re-render checklist/files to dynamically hide action delete buttons or disable inputs
+    const project = this.getActiveProject();
+    if (project) {
+      this.renderChecklist();
+      this.renderFiles();
+      this.renderParts();
+    }
   }
 
+  // Helper alert for locked items
   alertRestricted(msg) {
-    alert(`🔒 ACCESS DENIED // READ-ONLY MODE:\n\n${msg}\n\nSwitch user profile settings via the bottom action command deck.`);
+    alert(`🔒 ACCESS DENIED // READ-ONLY MODE:\n\n${msg}\n\nTo perform this action, please switch your role to ADMINISTRATOR using the bottom-left panel.`);
   }
 
+  // Events Binding
   bindEvents() {
-    // Theme Toggle Setup
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    const project = this.getActiveProject();
+
+    // 1. Theme Toggle Click
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      this.saveState();
+      this.applyTheme();
+    });
+
+    // 2. Add Task Form submit
+    document.getElementById('form-add-task').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.currentRole !== 'ADMINISTRATOR') {
+        this.alertRestricted("Task additions are restricted in Partner mode.");
+        return;
+      }
+
+      const input = document.getElementById('input-task-text');
+      const text = input.value.trim();
+      const proj = this.getActiveProject();
+
+      if (text && proj) {
+        proj.checklist.push({
+          id: "c_" + Date.now(),
+          text: text,
+          checked: false
+        });
+
+        this.logChange(proj.id, `Added new checklist item: "${text}".`);
         this.saveState();
-        this.applyTheme();
-      });
-    }
+        this.renderChecklist();
+        this.renderMilestones();
+        this.renderProjectList();
+        input.value = '';
+      }
+    });
 
-    // Add Task Handler
-    const addTaskForm = document.getElementById('form-add-task');
-    if (addTaskForm) {
-      addTaskForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (this.currentRole !== 'ADMINISTRATOR') {
-          this.alertRestricted("Task deployments restricted to Administrator clearances.");
-          return;
-        }
-        const input = document.getElementById('input-task-text');
-        const proj = this.getActiveProject();
-        if (input && input.value.trim() && proj) {
-          const text = input.value.trim();
-          proj.checklist.push({ id: "c_" + Date.now(), text: text, checked: false });
-          this.logChange(proj.id, `Added new checklist item: "${text}".`);
-          this.saveState();
-          this.renderChecklist();
-          this.renderMilestones();
-          this.renderProjectList();
-          input.value = '';
-        }
-      });
-    }
+    // 3. Add Part Form submit
+    document.getElementById('form-add-part').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.currentRole !== 'ADMINISTRATOR') {
+        this.alertRestricted("Parts registrations are restricted in Partner mode.");
+        return;
+      }
 
-    // Add Component Part Handler
-    const addPartForm = document.getElementById('form-add-part');
-    if (addPartForm) {
-      addPartForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (this.currentRole !== 'ADMINISTRATOR') {
-          this.alertRestricted("Inventory logging pipeline restricted in Partner mode.");
-          return;
-        }
+      const nameInput = document.getElementById('input-part-name');
+      const qtyInput = document.getElementById('input-part-qty');
+      const costInput = document.getElementById('input-part-cost');
+      const statusSelect = document.getElementById('input-part-status');
 
-        const nameInput = document.getElementById('input-part-name');
-        const qtyInput = document.getElementById('input-part-qty');
-        const costInput = document.getElementById('input-part-cost');
-        const statusSelect = document.getElementById('input-part-status');
-        const proj = this.getActiveProject();
+      const name = nameInput.value.trim();
+      const qty = parseInt(qtyInput.value);
+      const cost = parseFloat(costInput.value);
+      const status = statusSelect.value;
+      const proj = this.getActiveProject();
 
-        if (nameInput && nameInput.value.trim() && proj) {
-          const name = nameInput.value.trim();
-          const qty = parseInt(qtyInput?.value || '1', 10);
-          const cost = parseFloat(costInput?.value || '0.00');
-          const status = statusSelect?.value || 'Pending';
+      if (name && proj) {
+        proj.parts.push({
+          id: "p_" + Date.now(),
+          name: name,
+          qty: qty,
+          cost: cost,
+          status: status
+        });
 
-          proj.parts.push({ id: "p_" + Date.now(), name, qty, cost, status });
-          this.logChange(proj.id, `Registered part: "${name}" x${qty} ($${cost.toFixed(2)} ea).`);
-          
-          this.saveState();
-          this.renderParts();
+        this.logChange(proj.id, `Registered part: "${name}" x${qty} ($${cost.toFixed(2)} ea, status: ${status}).`);
+        this.saveState();
+        this.renderParts();
 
-          if (nameInput) nameInput.value = '';
-          if (qtyInput) qtyInput.value = '1';
-          if (costInput) costInput.value = '0.00';
-          if (statusSelect) statusSelect.value = 'Pending';
-        }
-      });
-    }
+        // Reset fields
+        nameInput.value = '';
+        qtyInput.value = '1';
+        costInput.value = '0.00';
+        statusSelect.value = 'Pending';
+      }
+    });
 
-    // File Selection Logic
+    // 4. File uploads & selector logic
     const fileSelectorDummy = document.getElementById('btn-file-select');
     const fileInputHidden = document.getElementById('input-file-upload');
     const fileLabelDisplay = document.getElementById('selected-file-label');
 
-    if (fileSelectorDummy && fileInputHidden) {
-      fileSelectorDummy.addEventListener('click', () => {
-        if (this.currentRole !== 'ADMINISTRATOR') {
-          this.alertRestricted("Upload sequences are locked under Partner profile configurations.");
-          return;
+    fileSelectorDummy.addEventListener('click', () => {
+      if (this.currentRole !== 'ADMINISTRATOR') {
+        this.alertRestricted("File uploads are restricted in Partner mode.");
+        return;
+      }
+      fileInputHidden.click();
+    });
+
+    fileInputHidden.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Restrict to ~1.5MB for localStorage safety
+      if (file.size > 1572864) {
+        alert("⚠️ FILE TOO LARGE:\n\nPlease select a file smaller than 1.5MB to ensure local client compatibility.");
+        fileInputHidden.value = '';
+        fileLabelDisplay.innerText = "No file chosen";
+        return;
+      }
+
+      this.uploadedFileName = file.name;
+      fileLabelDisplay.innerText = file.name;
+
+      // Convert to Base64 dataUrl
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        this.uploadedFileDataUrl = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // File Hub Upload Submit
+    document.getElementById('form-upload-file').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.currentRole !== 'ADMINISTRATOR') {
+        this.alertRestricted("File uploads are restricted in Partner mode.");
+        return;
+      }
+
+      const proj = this.getActiveProject();
+      const fileTitleInput = document.getElementById('input-file-name');
+      const categorySelect = document.getElementById('input-file-type');
+      const externalUrlInput = document.getElementById('input-file-url');
+
+      const title = fileTitleInput.value.trim();
+      const category = categorySelect.value;
+      const extUrl = externalUrlInput.value.trim();
+
+      if (!proj) return;
+
+      let size = "100 KB"; // Default mockup size
+      let sourceUrl = "#";
+      let dataUrlToSave = "";
+      
+      // Determine file source
+      if (this.uploadedFileDataUrl) {
+        // Read size from file input
+        const fileObj = fileInputHidden.files[0];
+        if (fileObj) {
+          const sizeKb = Math.round(fileObj.size / 1024);
+          size = sizeKb > 1024 ? (sizeKb / 1024).toFixed(1) + " MB" : sizeKb + " KB";
         }
-        fileInputHidden.click();
+        dataUrlToSave = this.uploadedFileDataUrl;
+        sourceUrl = "";
+      } else if (extUrl) {
+        sourceUrl = extUrl;
+        size = "External Resource";
+      } else {
+        alert("Please browse a local file or enter an external URL to attach.");
+        return;
+      }
+
+      proj.files.push({
+        id: "f_" + Date.now(),
+        name: title,
+        category: category,
+        size: size,
+        date: new Date().toISOString().substring(0, 10),
+        url: sourceUrl,
+        isLocal: !!this.uploadedFileDataUrl,
+        dataUrl: dataUrlToSave
       });
-    }
 
-    if (fileInputHidden) {
-      fileInputHidden.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      this.logChange(proj.id, `Uploaded document: "${title}" (${category.toUpperCase()}, size: ${size}).`);
+      this.saveState();
+      this.renderFiles();
 
-        if (file.size > 1572864) {
-          alert("⚠️ LOCAL CACHE OVERLOAD PROTECT:\nFile size caps at 1.5MB for secure LocalStorage transactions.");
-          fileInputHidden.value = '';
-          if (fileLabelDisplay) fileLabelDisplay.innerText = "No file chosen";
-          return;
-        }
+      // Reset Form fields
+      fileTitleInput.value = '';
+      categorySelect.value = 'pdf';
+      externalUrlInput.value = '';
+      fileInputHidden.value = '';
+      fileLabelDisplay.innerText = "No file chosen";
+      this.uploadedFileDataUrl = "";
+      this.uploadedFileName = "";
+    });
 
-        this.uploadedFileName = file.name;
-        if (fileLabelDisplay) fileLabelDisplay.innerText = file.name;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => { this.uploadedFileDataUrl = evt.target.result; };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // File Upload Submission Form
-    const uploadFileForm = document.getElementById('form-upload-file');
-    if (uploadFileForm) {
-      uploadFileForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (this.currentRole !== 'ADMINISTRATOR') {
-          this.alertRestricted("Document uploads require administrator structural access level.");
-          return;
-        }
-
-        const proj = this.getActiveProject();
-        const fileTitleInput = document.getElementById('input-file-name');
-        const categorySelect = document.getElementById('input-file-type');
-        const externalUrlInput = document.getElementById('input-file-url');
-
-        if (!proj || !fileTitleInput) return;
-
-        const title = fileTitleInput.value.trim();
-        const category = categorySelect?.value || 'pdf';
-        const extUrl = externalUrlInput?.value.trim() || '';
-
-        if (!title) {
-          alert("Please input a valid name for the file block configuration.");
-          return;
-        }
-
-        let size = "100 KB";
-        let sourceUrl = "#";
-        let dataUrlToSave = "";
-        
-        if (this.uploadedFileDataUrl) {
-          const fileObj = fileInputHidden?.files[0];
-          if (fileObj) {
-            const sizeKb = Math.round(fileObj.size / 1024);
-            size = sizeKb > 1024 ? (sizeKb / 1024).toFixed(1) + " MB" : sizeKb + " KB";
-          }
-          dataUrlToSave = this.uploadedFileDataUrl;
-          sourceUrl = "";
-        } else if (extUrl) {
-          sourceUrl = extUrl;
-          size = "External URL Link";
-        } else {
-          alert("Map a local asset file via file selector browser or input external source link URI.");
-          return;
-        }
-
-        proj.files.push({
-          id: "f_" + Date.now(),
-          name: title,
-          category: category,
-          size: size,
-          date: new Date().toISOString().substring(0, 10),
-          url: sourceUrl,
-          isLocal: !!this.uploadedFileDataUrl,
-          dataUrl: dataUrlToSave
-        });
-
-        this.logChange(proj.id, `Uploaded document: "${title}" (${category.toUpperCase()}).`);
-        this.saveState();
-        this.renderFiles();
-
-        fileTitleInput.value = '';
-        if (categorySelect) categorySelect.value = 'pdf';
-        if (externalUrlInput) externalUrlInput.value = '';
-        if (fileInputHidden) fileInputHidden.value = '';
-        if (fileLabelDisplay) fileLabelDisplay.innerText = "No file chosen";
-        this.uploadedFileDataUrl = "";
-        this.uploadedFileName = "";
-      });
-    }
-
-    // Modal Opening and Closing Layout Systems
+    // 5. Secure Partner/Admin Login Modal
     const loginModal = document.getElementById('login-modal');
     const loginError = document.getElementById('login-error-msg');
 
     const triggerLoginModal = () => {
-      const uField = document.getElementById('login-username');
-      const pField = document.getElementById('login-password');
-      if (uField) uField.value = '';
-      if (pField) pField.value = '';
-      if (loginError) loginError.style.display = 'none';
-      if (loginModal) loginModal.classList.add('show');
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      loginError.style.display = 'none';
+      loginModal.classList.add('show');
     };
 
-    const toggleBtn = document.getElementById('btn-toggle-login');
-    if (toggleBtn) toggleBtn.addEventListener('click', triggerLoginModal);
-    
-    const partnerBadge = document.getElementById('partner-badge');
-    if (partnerBadge) partnerBadge.addEventListener('click', triggerLoginModal);
+    document.getElementById('btn-toggle-login').addEventListener('click', triggerLoginModal);
+    document.getElementById('partner-badge').addEventListener('click', triggerLoginModal);
 
-    const closeLoginPanel = () => {
-      if (loginModal) loginModal.classList.remove('show');
+    const resetLoginInputs = () => {
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      loginError.style.display = 'none';
+      loginModal.classList.remove('show');
     };
 
-    const closeLoginBtn = document.getElementById('btn-close-modal');
-    if (closeLoginBtn) closeLoginBtn.addEventListener('click', closeLoginPanel);
+    document.getElementById('btn-close-modal').addEventListener('click', resetLoginInputs);
+    document.getElementById('btn-cancel-login').addEventListener('click', resetLoginInputs);
 
-    const cancelLoginBtn = document.getElementById('btn-cancel-login');
-    if (cancelLoginBtn) cancelLoginBtn.addEventListener('click', closeLoginPanel);
-
-    // Dynamic verification layer authentication system code execution
-    const loginForm = document.getElementById('form-login-auth');
-    if (loginForm) {
-      loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const userVal = document.getElementById('login-username')?.value.trim();
-        const passVal = document.getElementById('login-password')?.value.trim();
-        
-        let targetRole = "";
-        // Accepting fallback keys provided in baseline setup logs
-        if (userVal === "admin1234" && (passVal === "12345678" || passVal === "as12345678")) {
-          targetRole = "ADMINISTRATOR";
-        } else if (userVal === "partner1234" && (passVal === "12345678" || passVal === "as12345678")) {
-          targetRole = "PARTNER";
-        }
-        
-        if (targetRole !== "") {
-          if (loginError) loginError.style.display = 'none';
-          const previousRole = this.currentRole;
-          this.currentRole = targetRole;
-          this.saveState();
-          this.applyRoleUI();
-          
-          if (previousRole !== this.currentRole) {
-            const proj = this.getActiveProject();
-            if (proj) this.logChange(proj.id, `User authenticated signature update: ${previousRole} -> ${targetRole}.`);
-          }
-          closeLoginPanel();
-        } else {
-          if (loginError) loginError.style.display = 'block';
-        }
-      });
-    }
-
-    // Modal UI Closing Layer Helpers (Clicking background close element overlays)
-    window.addEventListener('click', (e) => {
-      if (e.target === loginModal) {
-        closeLoginPanel();
+    // Confirm switch role using form submit
+    document.getElementById('form-login-auth').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const userVal = document.getElementById('login-username').value.trim();
+      const passVal = document.getElementById('login-password').value.trim();
+      
+      let targetRole = "";
+      
+      if (userVal === "admin1234" && (passVal === "12345678" || passVal === "as12345678")) {
+        targetRole = "ADMINISTRATOR";
+      } else if (userVal === "partner1234" && (passVal === "12345678" || passVal === "as12345678")) {
+        targetRole = "PARTNER";
       }
-      const previewModal = document.getElementById('preview-modal');
-      if (e.target === previewModal) {
-        previewModal.classList.remove('show');
+      
+      if (targetRole !== "") {
+        loginError.style.display = 'none';
+        
+        const previousRole = this.currentRole;
+        this.currentRole = targetRole;
+        this.saveState();
+        this.applyRoleUI();
+        
+        if (previousRole !== this.currentRole) {
+          const proj = this.getActiveProject();
+          if (proj) {
+            this.logChange(proj.id, `User authenticated: ${previousRole} -> ${targetRole}.`);
+          }
+        }
+        
+        resetLoginInputs();
+      } else {
+        loginError.style.display = 'block';
       }
     });
 
-    const closePreviewBtn = document.getElementById('btn-close-preview');
-    if (closePreviewBtn) {
-      closePreviewBtn.addEventListener('click', () => {
-        const previewModal = document.getElementById('preview-modal');
-        if (previewModal) previewModal.classList.remove('show');
-      });
-    }
+    // 6. Preview Modal Close
+    const previewModal = document.getElementById('preview-modal');
+    document.getElementById('btn-close-preview').addEventListener('click', () => {
+      previewModal.classList.remove('show');
+    });
 
-    // Reset workflow milestones
-    const resetWfBtn = document.getElementById('btn-reset-workflow');
-    if (resetWfBtn) {
-      resetWfBtn.addEventListener('click', () => {
-        if (this.currentRole !== 'ADMINISTRATOR') return;
-        const proj = this.getActiveProject();
-        if (proj) {
-          proj.currentMilestoneIdx = 0;
-          this.logChange(proj.id, "Reset workflow milestones to initial Concept stage.");
-          this.saveState();
-          this.renderMilestones();
-        }
-      });
-    }
+    // 7. Clear Changelog
+    document.getElementById('btn-clear-changelog').addEventListener('click', () => {
+      const proj = this.getActiveProject();
+      if (!proj) return;
 
-    // Clear tracking dashboard log entries 
-    const clearChangelogBtn = document.getElementById('btn-clear-changelog');
-    if (clearChangelogBtn) {
-      clearChangelogBtn.addEventListener('click', () => {
-        const proj = this.getActiveProject();
-        if (!proj) return;
-        if (confirm(`Are you sure you want to clear the changelog timeline for ${proj.name}?`)) {
-          proj.changelog = [];
-          this.saveState();
-          this.renderChangelog();
-        }
-      });
-    }
+      if (confirm(`Are you sure you want to clear the changelog timeline for ${proj.name}?`)) {
+        proj.changelog = [];
+        this.saveState();
+        this.renderChangelog();
+      }
+    });
 
-    // Partner feedback node tracking forms hook
-    const partnerNoteForm = document.getElementById('form-partner-note');
-    if (partnerNoteForm) {
-      partnerNoteForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (this.currentRole !== 'PARTNER') {
-          alert("Only partners can submit feedback reviews.");
-          return;
-        }
-        const input = document.getElementById('input-partner-note');
-        const proj = this.getActiveProject();
-        if (input && input.value.trim() && proj) {
-          this.logChange(proj.id, `Feedback left: "${input.value.trim()}"`);
-          input.value = '';
-        }
-      });
-    }
+    // 7.5 Reset Workflow Milestones
+    document.getElementById('btn-reset-workflow').addEventListener('click', () => {
+      if (this.currentRole !== 'ADMINISTRATOR') return;
+      const proj = this.getActiveProject();
+      if (proj) {
+        proj.currentMilestoneIdx = 0;
+        this.logChange(proj.id, "Reset workflow milestones to initial Concept stage.");
+        this.saveState();
+        this.renderMilestones();
+      }
+    });
+
+    // 8. Partner Review Note Submit
+    document.getElementById('form-partner-note').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.currentRole !== 'PARTNER') {
+        alert("Only partners can submit feedback reviews.");
+        return;
+      }
+
+      const input = document.getElementById('input-partner-note');
+      const text = input.value.trim();
+      const proj = this.getActiveProject();
+
+      if (text && proj) {
+        this.logChange(proj.id, `Feedback left: "${text}"`);
+        input.value = '';
+      }
+    });
   }
 }
 
-// Instantiate on Core Web Content Initialization Match
+// Instantiate on Page Load
 window.addEventListener('DOMContentLoaded', () => {
   new RoboApp();
 });
